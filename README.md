@@ -33,6 +33,7 @@ There are two config files, `bot.json` and `config.json`. These files MUST be fi
 
 Python requirements to be published at a later point.
 
+- - - -
 
 Additional GNU GPL3 Terms apply to all code within this project(7b & 7c):
 -  Requiring preservation of specified reasonable legal notices or
