@@ -12,8 +12,7 @@ instructions = "This room has been created for your playthrough of {}.\n" \
                 "and that you can only have one playthrough room at any given time."
 
 
-
-class rolesUser():
+class rolesUser(commands.Cog):
     def __init__(self, client):
         self.client = client
         self.instructions = instructions
@@ -22,230 +21,235 @@ class rolesUser():
 
         print("{}: loaded successfully".format(modName))
 
-
+    # REWRITE COMPLETE
     @commands.command(pass_context=True)
     async def start(self, ctx, *game):
-        game = (" ".join(game)).lower() # Merge args for single string
-        games = listGames(ctx.guild, 0) # Get full game list from DB
+        game = (" ".join(game))
 
-        # if the 'game' isn't 'list' or empty, and it's a valid game in the DB
-        if game != "list" and game != "":
-            if game in games:
-                if (len(getUserGame(ctx.guild, ctx.author.id)) == 0):
-                    inst = getGame(ctx.guild, game) # Get the game from the database
+        # TODO: Set up a process for games made only to "$finished" (like for anime)
+        # Get list of games (name only)
+        gameTable = getGames(ctx.guild)
 
-                    # Verify category exists in the guild, get ref objects for them
-                    # inst[3] is playCat, the category holding current playthroughs
-                    if not await verifyCategory(ctx, inst[3], ctx.guild.categories): return
+        if game == "list" or game == "":
+            await ctx.send("Configured games are: \n" + ", ".join([gameName[0] for gameName in gameTable]))
+            return
+        else: # If game is the gameName or gameAlias for a game
+            if (game.lower() in (gameName[0].lower() for gameName in gameTable)) or (game.lower() in (gameName[1].lower() for gameName in gameTable)):
+                activeGames = [game[1] for game in getUserGames(ctx.guild, ctx.author.id)]
+                if game not in activeGames:
+                    # Get the row where the user specifies either gameName or gameAlias
+                    for gameRow in gameTable:
+                        if game.lower() == gameRow[0].lower() or game.lower() == gameRow[1].lower():
+                            gameInst = gameRow
 
-                    category = get(ctx.guild.categories, name=inst[3])
+                    # Verify game category exists
+                    categories = [category.name for category in ctx.guild.categories]
 
-                    # Create user room role, user room. Grab ref for room
-                    room = await ctx.guild.create_text_channel(name=ctx.author.display_name + inst[1], category=category)
+                    if gameInst[4] not in categories:
+                        await ctx.send("N O P E ! Category {} doesn't exist!".format(gameInst[4]))
+                        return
 
-                    # Give user access to their own room
-                    await room.set_permissions(ctx.author, overwrite=returnOwner(True))
+                    # Get category, make room, set perms, pin instructions
+                    category = get(ctx.guild.categories, name=gameInst[4])
+                    room = await ctx.guild.create_text_channel(name=ctx.author.display_name + gameInst[3], category=category)
 
-                    # Post instructions in room and pin it
-                    instructions = await room.send(self.instructions.format(inst[0]))
+                    ownerPerm = discord.PermissionOverwrite(read_messages=True, read_message_history=True, send_messages=True, manage_messages=True)
+                    await room.set_permissions(ctx.author, overwrite=ownerPerm)
+
+                    instructions = await room.send(self.instructions.format(gameInst[1]))
                     await instructions.pin()
 
-                    # Set user game in the database, confirm completion to user
-                    setUserGame(ctx.guild, ctx.author.id, game, room.id)
+                    # Assign room, confirm with user
+                    setUserGame(ctx.guild, ctx.author.id, gameInst[0], room.id)
                     await ctx.send("Game room has been created: " + room.mention, delete_after=30)
+                    return
                 else:
-                    await ctx.send("You already have a room!", delete_after=10)
+                    await ctx.send("You already have a {} room!".format(game))
+                    return
             else:
-                await ctx.send("Game does not exist, try again or `$start list` for game list!", delete_after=10)
-        elif len(games) is not 0:
-            await ctx.send("Configured games are: \n" + ", ".join(games), delete_after=15)
-        elif len(games) is 0:
-            await ctx.send("No games currently configured for this server!", delete_after=10)
-
+                await ctx.send("Game does not exist, try again or `$start list` for game list!")
+                return
 
     @commands.command(pass_context=True)
     async def chapter(self, ctx, *chapter: str):
-        chapter = " ".join(chapter)                         # Merge args for single string
-        userGame = getUserGame(ctx.guild, ctx.author.id)    # Get sender's game
-        gameRoles = []
+        chapter = str(" ".join(chapter))
 
-        # If a valid game entry is returned
-        if len(userGame) != 0:
-            # If the message is sent from the user's playthrough room
-            if (userGame[2] == ctx.channel.id):
-                gameRoles = getRoles(ctx.guild, userGame[1])
-                purgeRoles = bool(getGame(ctx.guild, userGame[1])[5])
+        # Get game for context channel.
+        activeGames = getUserGames(ctx.guild, ctx.author.id)
+        activeGame = [game[1] for game in activeGames if game[2] == ctx.channel.id]
 
-                # Command without args
-                if chapter == "list" or not chapter:
-                    embed = discord.Embed(title="DaSH 1st Edition Ver. 1.19", description="Chapter list",
-                                          color=0xcb6326)
-                    embed.set_thumbnail(url="https://i.imgur.com/8ye4OJZ.png")
+        if len(activeGame) == 1:
+            gameRoles = getRole(ctx.guild, activeGame[0])
 
-                    for i in gameRoles:
-                        role = i[0]
-                        if len(i) > 1:
-                            i.pop(0)
-                            reqs = "Requires: " +  ", ".join(i)
-                        else: reqs = "Requires: None"
-                        embed.add_field(name=role, value=reqs,  inline=False)
-
-                    embed.set_footer(text="Use 'help' with a command for usage info.")
-                    await ctx.send(embed=embed)
-
-                # Command with args
-                else:
-                    try: result = [i for i in gameRoles if i[0] == chapter][0]
-                    except IndexError: result = None
-
-                    if result:
-                        roleObj = []
-                        for i in result: roleObj.append(get(ctx.guild.roles, name=i))
+            if chapter == "" or chapter == "list":
+                # Build embed out of roles
+                embed = discord.Embed(title="Role List for {}".format(activeGame[0]),
+                                      description="-"*len("Role List for {}".format(activeGame[0])) ,
+                                      color=0xcb6326)
+                # Loop through each role, make listing for role and reqs
+                for role in gameRoles:
+                    if len(role[2]) == 0:
+                        embed.add_field(name=role[1], value="Requires: None", inline=False)
                     else:
-                        await ctx.send("Chapter {} does not exist!".format(chapter), delete_after=10)
-                        return
+                        embed.add_field(name=role[1], value="Requires: " + ", ".join(role[2]), inline=False)
 
-                    chapter = roleObj[0]
+                await ctx.send(embed=embed)
+                return
 
-                    if ctx.author in chapter.members:
-                        await ctx.send("You already completed this chapter!", delete_after=10)
-                        return
-
-                    missing = []
-                    possess = []
-                    roleObj.pop(0)
-                    if len(roleObj) > 0:
-                        for i in roleObj:
-                            if ctx.author in i.members:
-                                possess.append(i)
-                            else:
-                                missing.append(i)
-
-                    if len(missing) == 0:
-                        await ctx.author.add_roles(chapter)
-                        await ctx.send("Role assigned!")
-                        if purgeRoles == True:
-                            for i in possess: await ctx.author.remove_roles(i)
-                    else:
-                        embed = discord.Embed(title="Missing requirements for role",
-                                              color=0xcb6326)
-                        for i in missing: embed.add_field(name="Role: " + chapter.name, value="Req: " + i.name,
-                                                          inline=False)
-                        await ctx.send(embed=embed, delete_after=20)
             else:
-                await ctx.send("This command must be sent from your playthrough channel.", delete_after=10)
+                if len(activeGame) == 1:
+                    # TODO: Clear out string fixes for role[1] once sqlite direct read is gone
+
+                    # TODO: Verify this isn't broken
+                    # Get whether requirement roles are purged on assignment
+                    purgeRoles = bool(getGames(ctx.guild, activeGame[0])[6])
+
+                    # Extract game, role and req row out of gameRoles. IndexError means not found.
+                    try:
+                        # comparison converts role[1] to string to fix sqlite issue with number chapters
+                        role = [role for role in gameRoles if str(role[1]).lower() == chapter.lower()][0]
+                    except IndexError:
+                        await ctx.send("{} is not a valid chapter for this game".format(chapter))
+                        return
+
+                    # Get chapter object
+                    roleObj = get(ctx.guild.roles, name=chapter)
+
+                    if roleObj is not None:
+                        # If the chapter has requirements
+                        if len(role[2]) > 0:
+                            # Get role reqs the user has
+                            userRoles = [role.name for role in ctx.author.roles]
+                            result = all(role in userRoles for role in role[2])
+
+                            # If user has all the role reqs
+                            if result == True:
+                                await ctx.author.add_roles(roleObj)
+                                await ctx.send("Role assigned!")
+
+                                # if purge is set to on for this game
+                                for roleObj in role[2]:
+                                    roleObj = get(ctx.guild.roles, name=roleObj)
+                                    await ctx.author.remove_roles(get(ctx.guild.roles, name=roleObj))
+                                return
+
+                            elif result == False:
+                                # Retrieve all missing roles and inform user
+                                missingRoles = [role for role in role[2] if role not in userRoles]
+                                embed = discord.Embed(title="Missing Role Requirement", color=0xcb6326)
+                                embed.add_field(name=chapter , value="\n".join(missingRoles), inline=False)
+                                await ctx.send(embed=embed)
+                                return
+
+                        else:
+                            await ctx.author.add_roles(roleObj)
+                            await ctx.send("Role assigned!")
+
+                            # if purge is set to on for this game
+                            for roleObj in role[2]:
+                                roleObj = get(ctx.guild.roles, name=roleObj)
+                                await ctx.author.remove_roles(roleObj)
+                            return
+                    else:
+                        # Catch for instances where a game role has been removed
+                        await ctx.send('Error: role "{}" not found on server!'.format(chapter))
+                        return
+
+        else:
+            await ctx.send("This command must be sent from one of your playthrough channels.")
+            return
+
+    @commands.command(pass_context=True)
+    async def end(self, ctx):
+        # Get game for context channel
+        activeGame = [game[1] for game in getUserGames(ctx.guild, ctx.author.id) if game[2] == ctx.channel.id]
+
+        # Get server games, roles, meta roles
+        # Meta roles are a role that encompasses completion of several games
+        gameList = getGames(ctx.guild)
+        gameRoles = getRole(ctx.guild)
+        metaRoles = [role for role in gameRoles if role[0] == "*"]
+
+        # Decide whether the user is finishing an 'active playthrough'
+        if activeGame:
+            # Get activeGame's roles and game param
+            gameRoles = getRole(ctx.guild, activeGame[0])
+            activeGame = [row for row in gameList if activeGame[0] == row[0]]
+
+            # Get Finished Category Object for activeGame
+            complCatObj = get(ctx.guild.categories, name=activeGame[0][5])
+            complRoleObj = get(ctx.guild.roles, name=activeGame[0][2])
+
+            # Verify variables prior to utilizing
+            await ctx.author.add_roles(complRoleObj)
+            await ctx.channel.edit(category=complCatObj, sync_permissions=True)
+            rmUserGame(ctx.guild, ctx.channel.id)
+
+            await ctx.send("You have been granted the completion role.\n"
+                   "The channel has been moved to the finished category.")
+
+            # Purge all relevant roles from the user
+            for role in gameRoles:
+                try: # Attempt to remove any stray roles
+                    roleObj = get(ctx.guild.roles, name=str(role[1]))
+                    await ctx.author.remove_roles(roleObj)
+                except AttributeError:
+                    pass
+
+            # Extract role names for comparison. Direct comparison makes list comprehension too complex
+            roleList = [role.name for role in ctx.author.roles]
+
+            # If user meets requirements for a Meta role, assign it
+            for metaRole in metaRoles:
+                if metaRole[1] not in roleList:
+                    if all(role in roleList for role in metaRole[2]):
+                        roleObj = get(ctx.guild.roles, name=metaRole[1])
+                        await ctx.author.add_roles(roleObj)
+
+        else:
+            await ctx.send("This command must be sent from a playthrough room")
+            return
+
 
     @commands.command(pass_context=True)
     async def finished(self, ctx, *game):
-        userGame = getUserGame(ctx.guild, ctx.author.id) # Get user's game from DB
         game = " ".join(game).lower()
 
-        # If user has game, and then sending channel matches their game channel
-        # TODO: FIX BUG WHEN USER DOES $FINISH <GAME> FROM THEIR PLAY ROOM
-        if (len(userGame) != 0):
-            if (userGame[2] == ctx.channel.id):
-                # Get channels from guild, games from database
-                channel =  ctx.channel
-                games = listGames(ctx.guild)
+        # Get server games, roles, meta roles
+        # Meta roles are a role that encompasses completion of several games
+        gameList = getGames(ctx.guild)
+        gameRoles = getRole(ctx.guild)
+        metaRoles = [role for role in gameRoles if role[0] == "*"]
 
-                # Get the game the channel is for, then get the object for the finished channel
-                game = list(i for i in games if i[0] == userGame[1])[0]
-                category = list(i for i in ctx.guild.categories if i.name == game[4])[0]
+        if game == "":
+            await ctx.send("Please specify a game!")
+            return
 
-                # Give user complRole from game in database
-                complRoleObj = get(ctx.guild.roles, name=game[2])
-                await ctx.author.add_roles(complRoleObj)
+        # Get info for game, get object for role
+        # Validate database info in case either column is a number
+        try:
+            game = next(row for row in gameList if game == str(row[0]) or game == str(row[1]))
+            complRoleObj = get(ctx.guild.roles, name=game[2])
+            if complRoleObj == None: raise Exception
+        except Exception:
+            await ctx.send("Game does not exist!")
+            return
 
-                # Remove player from players table
-                rmUserGame(ctx.guild, ctx.author.id)
+        # Get roles for this game only
+        gameRoles = getRole(ctx.guild, game[0])
 
-                # Move channel to Finished Category and sync its permissions
-                await channel.edit(category=category, sync_permissions=True)
-                await ctx.send("You have been granted the completion role.\n"
-                               "The channel has been moved to the finished category.")
+        await ctx.author.add_roles(complRoleObj)
+        await ctx.send("Game assigned!")
 
-                # Remove all of the games roles from the user. Try even if they don't have them
-                roleList = getRoles(ctx.guild, userGame[1])
-                for i in roleList:
-                    roleObj = get(ctx.guild.roles, name=str(i[0]))
-                    await ctx.author.remove_roles(roleObj)
+        # Extract role names for comparison. Direct comparison makes list comprehension too complex
+        roleList = [role.name for role in ctx.author.roles]
 
-                # TODO: ASYNC METHOD
-                # Check if any series roles are valid for this game
-                seriesRoles = getSRoles(ctx.guild)
-                if any(complRoleObj.name in row for row in seriesRoles): # Check if obj is in any seriesRoles rows
-                    rows = [row for row in seriesRoles if complRoleObj.name in row] # Get list of applicable rows
-                    userRoles = [i.name for i in ctx.author.roles] # Clean list of user roles
-                    for row in rows:# Loop through rows containing it.
-                        seriesRoleObj = get(ctx.guild.roles, name=row[0]) # Get object for parent seriesRole
-                        if len(row) > 1:
-                            del row[0] # We have this one so remove it for the comparison
-                            if all(elem in userRoles for elem in row): # Check if all of the roles in row in user roles
-                                await ctx.author.add_roles(seriesRoleObj)
-
-            else:
-                await ctx.send("This command must be sent from your playthrough channel.", delete_after=10)
-        else:
-            # For when user doesn't have a game active
-            games = listGames(ctx.guild, 0)
-            if game in games:
-                game = getGame(ctx.guild, game)
-                gameRole = get(ctx.guild.roles, name=game[2])
-                await ctx.author.add_roles(gameRole)
-                await ctx.send("Game role added!", delete_after=10)
-
-                # Get completion role
-                complRoleObj = get(ctx.guild.roles, name=game[2])
-                seriesRoles = getSRoles(ctx.guild)
-
-                # Check for completed series roles
-                if any(role for role in seriesRoles if complRoleObj.name in role):
-                    userRoles = [i.name for i in ctx.author.roles]
-                    for i in seriesRoles:
-                        role = i.pop(0)
-                        if set(i).issubset(userRoles):
-                            role = get(ctx.guild.roles, name=role)
-                            await ctx.author.add_roles(role)
-
-            else:
-                await ctx.send("Game does not exist!", delete_after=10)
-
-async def verifyCategory(ctx, complCat, guildCats):
-    if isinstance(complCat, str):
-        if not any(complCat == str(guildCats[x]) for x in range(len(guildCats))):
-            await ctx.send("N O P E ! Category {} doesn't exist!".format(complCat))
-            return False
-        else:
-            return True
-    else: raise  ValueError('complCat not instance of str')
-
-def getObj(obj, objName):
-    for i in obj:
-        if i.name == objName:
-            return i
-    return None
-
-def returnOverwrite(type):
-    overwrite = discord.PermissionOverwrite()
-    if type == True:
-        overwrite.update(read_messages=True, send_message_history=True, send_messages=True)
-    elif type == False:
-        overwrite.update(read_messages=False, send_message_history=False, send_messages=False)
-    else:
-        raise TypeError
-
-    return overwrite
-
-def returnOwner(type):
-    overwrite = discord.PermissionOverwrite()
-    if type == True:
-        overwrite.update(read_messages=True, send_message_history=True, send_messages=True, manage_messages=True)
-    elif type == False:
-        overwrite.update(read_messages=True, send_message_history=True, send_messages=False, manage_messages=False)
-    else:
-        raise TypeError
-
-    return overwrite
+        # If user meets requirements for a Meta role, assign it
+        for metaRole in metaRoles:
+            if metaRole[1] not in roleList:
+                if all(role in roleList for role in metaRole[2]):
+                    roleObj = get(ctx.guild.roles, name=metaRole[1])
+                    await ctx.author.add_roles(roleObj)
 
 def setup(client):
     client.add_cog(rolesUser(client))

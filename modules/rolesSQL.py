@@ -1,7 +1,9 @@
 import sqlite3, os, json, logging
+from datetime import datetime
 from discord.utils import get
 
-dbPath = "./guilds/" + "{}" + ".sqlite"
+path = "./guilds/"
+dbPath = path + "{}" + ".sqlite"
 
 # Logger
 log = logging.getLogger()
@@ -12,64 +14,45 @@ log.setLevel(logging.WARN)
 
 ## DB Functions ##
 
+# REWRITE COMPLETE
 # Add game to database
 def addGame(guild, gameName, gameAlias, complRole, chnlSuffix, playCat, complCat, purgeRole):
     conn, c = openDB(guild.id)
 
     c.execute("SELECT gameName FROM games WHERE gameName=?", (gameName,))
+    result = c.fetchone()
 
-    result = [i for i in c.fetchall()]
-    print("")
-
-    if len(result) is 0:
+    if result is None:
         c.execute('''INSERT INTO 'games' VALUES (?, ?, ?, ?, ?, ?, ?)''',
                   (gameName, gameAlias, complRole, chnlSuffix, playCat, complCat, purgeRole))
         conn.commit()
-
         c.close()
+
         return 0
     else:
         c.close()
+
         return 1
 
-# Return single game
-# TODO: MERGE getGame and listGames like getRoles
-def getGame(guild, gameName):
-    conn, c = openDB(guild.id)
-    c.execute('''SELECT * FROM games WHERE gameNAME=?''', (gameName, ))
-
-    try:
-        rtn = c.fetchall()[0]
-    except (IndexError):
-        rtn = None
-
-    c.close()
-    return rtn
-
-def listGames(guild, pos: int = None):
+# REWRITE COMPLETE
+def getGames(guild, gameName: str = None):
     conn, c = openDB(guild.id)
 
-    c.execute("SELECT * from games")
-
-    # If no pos, return all. If pos, return pos
-    if pos == None:
+    if gameName is None:
+        c.execute('''SELECT * from games''')
         gameList = c.fetchall()
 
-        c.close()
-        gameList.sort()
-        return gameList
     else:
-        gameList = []
-        [gameList.append(i[pos]) for i in c.fetchall()]
+        c.execute('''SELECT * from games where gameName=?''', (gameName,))
+        gameList = c.fetchone()
 
-        c.close()
-        gameList.sort()
-        return gameList
+    c.close()
+    return gameList
 
+# REWRITE COMPLETE
 def rmGame(guild, gameName):
-    gameName = gameName
-
     conn, c = openDB(guild.id)
+    gameName = gameName
 
     try:
         c.execute('''DELETE FROM games WHERE gameNAME=?''', (gameName, ))
@@ -87,11 +70,12 @@ def rmGame(guild, gameName):
 
     return gamesRows
 
-
+# REWRITE COMPLETE
 def addRole(guild, gameName, role, reqs):
     conn, c = openDB(guild.id)
 
-    # reqs is a list, so we dump it to JSON for later retrieval
+    # reqs is a list, so we dump it to JSON for later retrieval.
+    # this is more effective than attempting to grow and shrink rows.
     c.execute('''INSERT INTO 'roles' VALUES (?, ?, ?)''', (str(gameName), role, json.dumps(reqs)))
 
     rows = c.rowcount
@@ -100,18 +84,23 @@ def addRole(guild, gameName, role, reqs):
     c.close()
     return rows
 
-def getRoles(guild, gameName):
+
+def getRole(guild, gameName: str = None):
     conn, c = openDB(guild.id)
 
     try:
-        c.execute('''SELECT * FROM roles where gameName=(?)''', (gameName,))
+        if gameName == None:
+            c.execute('''SELECT * FROM roles''')
+        else:
+            c.execute('''SELECT * FROM roles where gameName=(?)''', (gameName,))
+
         roleTup = list(c.fetchall())
+
     except IndexError:
+        print("INDEX ERROR")
         return []
 
-    c.close()
-
-    # Convert reqs back to a list using JSON, If empty remove brackets.
+    # Convert the Final column (reqs) back from JSON
     roleList = []
     for row in roleTup:
         row = list(row)
@@ -121,30 +110,6 @@ def getRoles(guild, gameName):
             row[2] = ""
         roleList.append(row)
 
-    return roleList
-
-def getSRoles(guild, role=None):
-    conn, c = openDB(guild.id)
-
-    try:
-        if role == None: # If role isn't specified we want all the guild roles
-            c.execute('''SELECT * FROM "seriesRoles"''')
-            roles = c.fetchall()
-        else:            # If we specify one, give us that role
-            c.execute('''SELECT * FROM "seriesRoles" WHERE role="{}"'''.format(role,))
-            roles = c.fetchall()[0]
-
-        # See comments for similar section above. TL;DR: All indexes converted to str, drop null
-        roleList = []
-        for row in roles:
-            row = [str(i) for i in row if str(i) != 'NULL']
-            roleList.append(row)
-
-    except (sqlite3.OperationalError, IndexError):
-        # If we get this, our return is empty. Either the game has no roles or doesn't exist
-        roleList = []
-
-    c.close()
     return roleList
 
 def rmRole(guild, gameName, role):
@@ -165,48 +130,39 @@ def rmRole(guild, gameName, role):
 def setUserGame(guild, userID, game, gameRoom):
     conn, c = openDB(guild.id)
 
-    c.execute('''INSERT INTO players VALUES (?, ?, ?)''', (userID, game, gameRoom,))
+    c.execute('''INSERT INTO rooms VALUES (?, ?, ?)''', (userID, game, gameRoom,))
     status = c.rowcount
     conn.commit()
 
     c.close()
     return status
 
-def getUsers(guild):
+def getUserGames(guild, userID):
     conn, c = openDB(guild.id)
 
-    c.execute('''SELECT * FROM players''')
-    users = c.fetchall()
-
-    c.close()
-    return users
-
-def getUserGame(guild, userID):
-    conn, c = openDB(guild.id)
-
-    c.execute('''SELECT * FROM players WHERE userID=?''', (userID,))
+    c.execute('''SELECT * FROM rooms WHERE userID=?''', (userID,))
     try:
-        status = c.fetchall()[0]
+        status = c.fetchall()
     except IndexError:
         status = []
 
     c.close()
     return status
 
-def rmUserGame(guild, userID):
+def rmUserGame(guild, channelID):
     conn, c = openDB(guild.id)
 
-    c.execute('''DELETE FROM players WHERE userID=?''', (userID,))
+    c.execute('''DELETE FROM rooms WHERE gameRoom=?''', (channelID,))
 
     conn.commit()
     c.close()
 
 ## Permission Management
 
-def setAuthorized(guild, user, role):
+def setAuthorized(guild, obj, role):
     conn, c = openDB(guild.id)
 
-    c.execute('''INSERT INTO auth VALUES (?, ?)''', (user.name, role))
+    c.execute('''INSERT INTO auth VALUES (?, ?)''', (obj.id, role))
 
     conn.commit()
     c.close()
@@ -214,24 +170,26 @@ def setAuthorized(guild, user, role):
 def getAuthorized(guild, user=None):
     conn, c = openDB(guild.id)
 
-    try:
-        if user == None:
-            user= [[], []]
-            c.execute('''SELECT userID FROM auth where role!=?''', ('group',))
-            for i in c.fetchall(): user[0].append(i[0])
-            c.execute('''SELECT userID FROM auth where role=?''', ('group',))
-            for i in c.fetchall(): user[1].append(i[0])
-        else:
-            c.execute('''SELECT * FROM auth where userID=?''', (user.name,))
-            user = c.fetchall()[0]
+    # Craft an array so we can pass everything back. We'll use what's needed
+    authed= [[], [], []]
+    group = c.execute('''SELECT userID FROM auth where role=0''').fetchone()
+    owner = c.execute('''SELECT userID FROM auth where role=1''').fetchall()
+    admin = c.execute('''SELECT userID FROM auth where role=2''').fetchall()
 
-        c.close()
-        return user
-    except IndexError as e:
-        print(e)
-        c.close()
-        return None
-    
+    # Any of these could be an index error. If it's an error, pass it.
+    try:
+        if len(group) > 0: authed[0].append(group[0])
+    except: pass
+    try:
+        if len(owner) > 0: authed[1].extend([i[0] for i in owner])
+    except: pass
+    try:
+        if len(admin) > 0: authed[2].extend([i[0] for i in admin])
+    except: pass
+
+    return authed
+
+## REWRITE COMPLETE TODO: VERIFY
 def rmAuthorized(guild, role):
     conn, c = openDB(guild.id)
 
@@ -240,67 +198,77 @@ def rmAuthorized(guild, role):
     conn.commit()
     c.close()
 
-async def isAuthorized(ctx, fct = None):
-    user = ctx.author
-    authed = getAuthorized(ctx.guild)
-    authedUser = authed[0]
-    authedGroup = []
-    for i in authed[1]:
-        roleObj = get(ctx.guild.roles, name=i)
-        authedGroup.append(roleObj)
+async def isAuthorized(ctx, func = None, min = 0):
+    conn, c = openDB(ctx.guild.id)
 
-    if user.id in authedUser:
-        return 2
+    ##########################
+    ## Authorization Levels ##
+    ## 0 = Authorized       ##
+    ## 1 = Server Owner     ##
+    ## 2 = Admin            ##
+    ##########################
 
-    for i in authedGroup:
-        if user.id in [x.id for x in i.members]:
-            return 1
+    # Pull database to memory
+    perms = c.execute('''SELECT * from auth''').fetchall()
+    user, group = None, None
 
-    if fct != None:
-        print("Unauthorized User '{}' in '{}' attempted '{}'".format(user.name, ctx.guild.name, fct))
-    return 0
+    if len(perms) > 0:
+        # Check if user is in database, return if authorized
+        for row in perms:
+            if row[0] == ctx.author.id:
+                if row[1] > min: return 1
+
+        # If we get here and min is 0, check the auth group
+        if min == 0:
+            for row in perms:
+                if row[1] == 0:
+                    # See if user in auth group
+                    for role in ctx.author.roles:
+                        if role.id == row[0]:
+                            return 1
+
+        # User is not authorized
+        print("Unauthorized User '{}' in '{}' attempted to call '{}' at {}".format(ctx.author.display_name, ctx.guild.name, func, datetime.utcnow()))
+        return 0
 
 ## DB initialization ##
 
+def verifyGuild(guild):
+    path = dbPath.format(str(guild.id))
+    if os.path.exists(path):
+        return 0
+    else:
+        return 1
+
 def initGuild(guild):
     # Table for authorized users and their roles
-    AuthCol = ["userID integer", "role string"]
+    authTable = ["userID integer", "role string"]
     # Table for storing games and their settings
-    gamesCol = ["gameName string", "gameAlias string", "complRole string", "chnlSuffix string", "playCat string", "complCat string",
+    gameTable = ["gameName string", "gameAlias string", "complRole string", "chnlSuffix string", "playCat string", "complCat string",
                 "purgeRole integer"]
     # Table for storing user game states
-    roomsCol = ["userID integer", "gameName string", "gameRoom integer"]
+    roomTable = ["userID integer", "gameName string", "gameRoom integer"]
     # Table for role, both for games and for series
-    rolesCol = ["gameName string", "role string", "reqs string"]
-    ## TODO: DEPRICATE
-    # Table for storing seriesRoles, roles granted for finishing 'all games' of a type
-    ## seriesRolesCol = ["role string", "req1 string", "req2 string", "req3 string", "req4 string", "req5 string"]
+    roleTable = ["gameName string", "role string", "reqs string"]
 
-    if not os.path.exists(dbPath):
-        os.makedirs(dbPath)
-
-    # Davixxa, Zips, and the server owner (by default)
-    baseChuuni = []
-    for i in getAdmin():
-        baseChuuni.append([i, "admin"])
-    # If guild owner not an admin
-    if str(guild.owner.id) != baseChuuni[0][0] and str(guild.owner.id) != baseChuuni[1][0]:
-        baseChuuni.append([str(guild.owner.id), 'owner'])
+    if not os.path.exists(path): os.makedirs(path)
 
     conn, c = openDB(guild.id)
     # Initialize databases if they don't exist
-    c.execute('''CREATE TABLE IF NOT EXISTS auth ({});'''.format(", ".join(AuthCol)))
-    c.execute('''CREATE TABLE IF NOT EXISTS games ({});'''.format(", ".join(gamesCol)))
-    c.execute('''CREATE TABLE IF NOT EXISTS rooms ({});'''.format(", ".join(roomsCol)))
-    c.execute('''CREATE TABLE IF NOT EXISTS roles ({});'''.format((", ".join((rolesCol)))))
+    c.execute('''CREATE TABLE IF NOT EXISTS auth ({});'''.format(", ".join(authTable)))
+    c.execute('''CREATE TABLE IF NOT EXISTS games ({});'''.format(", ".join(gameTable)))
+    c.execute('''CREATE TABLE IF NOT EXISTS rooms ({});'''.format(", ".join(roomTable)))
+    c.execute('''CREATE TABLE IF NOT EXISTS roles ({});'''.format((", ".join((roleTable)))))
 
-    ## TODO: DEPRICATE
-    ##c.execute('''CREATE TABLE IF NOT EXISTS seriesRoles ({});'''.format((", ".join(seriesRolesCol))))
+    # Add admins from config
+    with open("config.json", "r") as f:
+            config = json.load(f)
 
-    # Add in admins
-    for i in baseChuuni: c.execute('''INSERT INTO 'auth' VALUES (?, ?)''', (i[0], i[1]))
+    for i in config["admin"]: c.execute('''INSERT INTO 'auth' VALUES (?, ?)''', (i, 2))
+    if guild.owner.id not in config["admin"]:
+        c.execute('''INSERT INTO 'auth' VALUES (?, ?)''', (guild.owner.id, 1))
+
     conn.commit()
-
     c.close()
 
 
@@ -318,22 +286,6 @@ def runSQL(guild, cmd):
     c.close()
 
     return result
-
-def verifyGuild(guild):
-    path = dbPath.format(str(guild.id))
-    if os.path.exists(path):
-        return 0
-    else:
-        return 1
-
-## TODO: DEPRICATE
-#def verifyPath(guild):
-    path = dbPath.format(str(guild.id))
-    if not os.path.exists(path):
-        initGuild(guild)
-        return 1
-    else:
-        return 0
 
 ## Shorteners ##
 

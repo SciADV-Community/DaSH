@@ -105,7 +105,7 @@ async def on_ready():
         await modLoad(client, mod, None)
 
     try:
-        client.load_extension("mod.help")
+        client.load_extension("modules.help")
     except(AttributeError, ImportError) as e:
         sys.exit("Fatal Error: Unable to load 'mod.help'")
 
