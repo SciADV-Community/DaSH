@@ -1,6 +1,6 @@
 from discord.ext import commands
 from discord.utils import get
-from modules.rolesSQL import *
+from dash.discord.modules.rolesSQL import *
 import os, shutil, sqlite3, discord
 
 modName = ""

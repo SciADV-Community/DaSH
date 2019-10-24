@@ -1,6 +1,7 @@
+import logging
 from discord import Embed, PermissionOverwrite
 from discord.ext import commands
-from modules.rolesSQL import *
+from dash.discord.modules.rolesSQL import *
 
 modName = ""
 
