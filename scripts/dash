@@ -1,0 +1,88 @@
+#!/usr/bin/env python
+import re
+from pathlib import Path
+import shutil
+import click
+import inquirer
+
+def stringify_list(values, process=None):
+    """Function to change a python list into its string representation"""
+    strings = [f'"{value}"' for value in values if value]
+    if process:
+        strings = [process(string) for string in strings]
+    return f"[{', '.join(strings)}]"
+
+
+@click.group()
+def dash():
+    """
+    Command line tool to manage the bot.
+    """
+    pass
+
+
+@dash.command()
+@click.option(
+    "--prefix", "-p", prompt="Prefix to use for bot commands", type=str, default="$"
+)
+@click.option(
+    "--description", "-d", prompt="The bot's description text", type=str, default=""
+)
+@click.option(
+    "--token",
+    "-t",
+    prompt="The bot's access token",
+    type=str,
+    default="# TODO Set later",
+)
+@click.option("--admins", "-a", prompt="User IDs of Bot admins", type=str, default="")
+def init(prefix, description, token, admins):
+    """
+    Initialize the bot's configuration.
+    """
+    scripts_dir = Path(__file__).parent
+    project_dir = scripts_dir.parent / "src" / "dash"
+    discord_dir = project_dir / "discord"
+
+    ### Admin parsing
+    admins = stringify_list(re.split(r', |,| ', admins))
+
+    ### Module prompt
+    module_folder = discord_dir / "modules"
+    all_modules = [file.stem for file in module_folder.glob("*.py")]
+
+    questions = [
+        inquirer.Checkbox('mods',
+            message="Select the modules you want to load",
+            choices=all_modules
+        )
+    ]
+    answers = inquirer.prompt(questions)
+    modules = [f"mod.{module}" for module in answers["mods"]]
+    modules = stringify_list(modules)
+
+    questions = [
+        inquirer.Checkbox('startup_mods',
+            message="Select the modules you want to load on startup",
+            choices=answers["mods"]
+        )
+    ]
+    answers = inquirer.prompt(questions)
+    startup_modules = [f"mod.{module}" for module in answers["startup_mods"]]
+    startup_modules = stringify_list(startup_modules)
+
+    ### Load config string
+    example_config = scripts_dir / "example_config"
+    with example_config.open() as f:
+        config = f.read()
+    config = config.format(prefix, description, token, admins, modules, startup_modules)
+    
+    target_file = project_dir / "config.py"
+    with target_file.open(mode="w") as f:
+        f.write(config)
+
+    click.secho("Config initalized successfully.", fg="green")
+
+
+if __name__ == "__main__":
+    dash()

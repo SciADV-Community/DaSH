@@ -1,0 +1,16 @@
+from dash.consts import Engines
+
+DATABASE_CONFIG = {{
+    "engine": Engines.SQLite, 
+    "options": {{
+        "filename": "playthrough.db"
+    }}
+}}
+
+PREFIX = "{0}"
+DESCRIPTION = "{1}"
+TOKEN = "{2}"
+
+ADMINS = {3}
+MODULES = {4}
+STARTUP = {5}

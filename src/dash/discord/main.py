@@ -1,16 +1,11 @@
 import json, sys, logging
 from discord.ext import commands
+from dash import config
 
-# Load bot config
-with open("bot.json", "r") as f:
-    bot = json.load(f)
-# Load bot settings
-with open("config.json", "r") as f:
-    settings = json.load(f)
 
 # Init bot
-client = commands.Bot(command_prefix=bot["prefix"], description=bot["desc"], case_insensitive=True)
-admins = settings["admin"]
+client = commands.Bot(command_prefix=config.PREFIX, description=config.DESCRIPTION, case_insensitive=True)
+admins = config.ADMINS
 
 # Enable logging
 log = logging.getLogger()
@@ -23,8 +18,8 @@ log.setLevel(logging.WARN)
 client.remove_command("help")
 
 ## Module list
-modList = settings["modules"]
-enabledMods = settings["startup"]
+modList = config.MODULES
+enabledMods = config.STARTUP
 runningMods = []
 
 ## Command Functions
@@ -93,7 +88,7 @@ async def on_command_error(ctx, error):
     # Sorry Davixxa, I totally stole this. Couldn't find a more efficient way
     if type(error).__name__ == "MissingRequiredArgument":
         await ctx.send("Command-tan experienced an error! Check your arguments or utilize `{}help {}`".
-                       format(bot["prefix"], ctx.message.content.split()[0][1:]))
+                       format(config.PREFIX, ctx.message.content.split()[0][1:]))
 
 ## Load Functions
 @client.event
@@ -142,4 +137,4 @@ async def modUnload(client, mod, ctx = None):
         return 0
 
 ## Run Function
-client.run(bot["id"])
+client.run(config.TOKEN)

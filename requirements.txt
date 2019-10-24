@@ -12,6 +12,7 @@ SQLAlchemy==1.3.10
 
 # CLI
 Click==7.0
+inquirer==2.6.3
 
 ### Development
 # Editor
