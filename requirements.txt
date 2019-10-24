@@ -1,0 +1,18 @@
+### Production
+# Discord
+discord==1.0.1
+discord.py==1.2.4
+
+# Database
+mysqlclient==1.4.4 # MySQL only
+psycopg2-binary==2.8.4 # PostgreSQL only
+
+# CLI
+Click==7.0
+
+### Development
+# Editor
+pylint==2.4.3
+# Testing
+pytest==5.2.1
+pytest-cov==2.8.1

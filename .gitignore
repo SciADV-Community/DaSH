@@ -1,0 +1,21 @@
+# Editors
+.idea/
+.vscode/
+
+# Environments
+env/
+.env/
+venv/
+
+# cache
+.pyc
+__pycache__/
+.pytest_cache/
+*.egg-info
+
+# coverage
+htmlcov/
+.coverage
+
+# Config
+config.py
