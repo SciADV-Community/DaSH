@@ -29,13 +29,20 @@ class ModelBase(object):
         session = Session()
         session.add(obj)
         session.commit()
+        return obj
 
     @classmethod
     def filter(cls, **kwargs):
+        """
+        Helper method to query objects.
+        """
         return Session.query(cls).filter_by(**kwargs)
 
     @classmethod
     def get(cls, **kwargs):
+        """
+        Helper method to get a specific object.
+        """
         return cls.filter(**kwargs).first()
 
     def delete(self):
