@@ -19,3 +19,6 @@ htmlcov/
 
 # Config
 config.py
+
+# Databases
+*.db

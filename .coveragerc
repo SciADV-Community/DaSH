@@ -1,2 +1,4 @@
 [run]
-omit = tests/*, scripts/*
+omit = 
+    tests/*,
+    scripts/*

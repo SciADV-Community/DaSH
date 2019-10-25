@@ -1,29 +1,42 @@
+# pylint: disable=no-self-argument, no-member
 from enum import Enum
 from sqlalchemy import create_engine, Column, Integer
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import as_declarative, declarative_base, declared_attr
 from dash import config
 from dash.models import Session
 from dash.consts import Engines
 
-Base = declarative_base()
 
-
-class ModelBase(Base):
+@as_declarative()
+class ModelBase(object):
     """
     Boilerplate class to manage common behaviour and abstract over the session API.
     """
-    id = Column('id', Integer, primary_key=True)
-    __tablename__ = "dummytable"
+
+    id = Column("id", Integer, primary_key=True, autoincrement=True)
+
+    @declared_attr
+    def __tablename__(cls):
+        return cls.__name__.lower()
 
     @classmethod
-    def create(cls, session: Session, **kwargs):
+    def create(cls, **kwargs):
         """
         Class helper method to create a new object.
         :param session: the DB session to use
         """
         obj = cls(**kwargs)
+        session = Session()
         session.add(obj)
         session.commit()
+
+    @classmethod
+    def filter(cls, **kwargs):
+        return Session.query(cls).filter_by(**kwargs)
+
+    @classmethod
+    def get(cls, **kwargs):
+        return cls.filter(**kwargs).first()
 
     def delete(self):
         """

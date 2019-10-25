@@ -1,7 +1,6 @@
-from sqlalchemy.orm import sessionmaker
-Session = sessionmaker()
+from sqlalchemy.orm import sessionmaker, scoped_session
+
+Session = scoped_session(sessionmaker())
 
 from .utils import get_engine
-engine = get_engine()
-
-Session.configure(bind=engine)
+from .models import Game
