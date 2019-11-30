@@ -19,6 +19,10 @@ dash migrate
 
 When asked for a message to add to the migration, add a short semantically rich message that describes what the migration is about.
 
+## Testing
+
+To run the tests locally, run `dash test`.
+
 ---
 
 Additional GNU GPL3 Terms apply to all code within this project(7b & 7c):

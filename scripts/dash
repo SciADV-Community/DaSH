@@ -101,6 +101,10 @@ def migrate(ref=None):
         command.append("head")
     subprocess.run(command)
 
+@dash.command()
+def test():
+    subprocess.run("pytest")
+
 
 if __name__ == "__main__":
     dash()
