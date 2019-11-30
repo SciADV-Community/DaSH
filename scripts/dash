@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import re
 import subprocess
+import runpy
 from pathlib import Path
 import shutil
 import click
@@ -91,6 +92,11 @@ def migrate(ref=None):
 @dash.command()
 def test():
     subprocess.run("pytest")
+
+
+@dash.command()
+def run():
+    runpy.run_module("dash.discord.main", run_name="__main__")
 
 
 if __name__ == "__main__":
