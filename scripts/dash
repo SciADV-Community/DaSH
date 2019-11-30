@@ -7,14 +7,6 @@ import click
 import inquirer
 
 
-def stringify_list(values, process=None):
-    """Function to change a python list into its string representation"""
-    strings = [f'"{value}"' for value in values if value]
-    if process:
-        strings = [process(string) for string in strings]
-    return f"[{', '.join(strings)}]"
-
-
 @click.group()
 def dash():
     """Command line tool to manage the bot."""
@@ -28,25 +20,17 @@ def dash():
 @click.option(
     "--description", "-d", prompt="The bot's description text", type=str, default=""
 )
-@click.option(
-    "--token",
-    "-t",
-    prompt="The bot's access token",
-    type=str,
-    default="# TODO Set later",
-)
+@click.option("--token", "-t", prompt="The bot's access token", type=str)
 @click.option("--admins", "-a", prompt="User IDs of Bot admins", type=str, default="")
 def init(prefix, description, token, admins):
     """Initialize the bot's configuration."""
-    scripts_dir = Path(__file__).parent
-    project_dir = scripts_dir.parent / "src" / "dash"
-    discord_dir = project_dir / "discord"
+    root_dir = Path(__file__).parent.parent
 
     ### Admin parsing
-    admins = stringify_list(re.split(r", |,| ", admins))
+    admins = ";".join(re.split(r", |,| ", admins))
 
     ### Module prompt
-    module_folder = discord_dir / "modules"
+    module_folder = root_dir / "src" / "dash" / "discord" / "modules"
     all_modules = [file.stem for file in module_folder.glob("*.py")]
 
     questions = [
@@ -55,8 +39,7 @@ def init(prefix, description, token, admins):
         )
     ]
     answers = inquirer.prompt(questions)
-    modules = [f"mod.{module}" for module in answers["mods"]]
-    modules = stringify_list(modules)
+    modules = ";".join([f"mod.{module}" for module in answers["mods"]])
 
     questions = [
         inquirer.Checkbox(
@@ -66,18 +49,21 @@ def init(prefix, description, token, admins):
         )
     ]
     answers = inquirer.prompt(questions)
-    startup_modules = [f"mod.{module}" for module in answers["startup_mods"]]
-    startup_modules = stringify_list(startup_modules)
+    startup_modules = ";".join([f"mod.{module}" for module in answers["startup_mods"]])
 
-    ### Load config string
-    example_config = scripts_dir / "example_config"
-    with example_config.open() as f:
-        config = f.read()
-    config = config.format(prefix, description, token, admins, modules, startup_modules)
-
-    target_file = project_dir / "config.py"
-    with target_file.open(mode="w") as f:
-        f.write(config)
+    ### Save into .env file
+    dotenv = root_dir / ".env"
+    with dotenv.open(mode="w") as f:
+        f.writelines(
+            [
+                f"BOT_PREFIX={prefix}\n",
+                f"BOT_TOKEN={token}\n",
+                f"BOT_DESCRIPTION={description}\n",
+                f"BOT_ADMINS={admins}\n",
+                f"BOT_MODULES={modules}\n",
+                f"BOT_STARTUP_MODULES={startup_modules}\n",
+            ]
+        )
 
     click.secho("Config initalized successfully.", fg="green")
 
@@ -100,6 +86,7 @@ def migrate(ref=None):
     else:
         command.append("head")
     subprocess.run(command)
+
 
 @dash.command()
 def test():
