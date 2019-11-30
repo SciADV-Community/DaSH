@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 import re
+import subprocess
 from pathlib import Path
 import shutil
 import click
 import inquirer
+
 
 def stringify_list(values, process=None):
     """Function to change a python list into its string representation"""
@@ -15,9 +17,7 @@ def stringify_list(values, process=None):
 
 @click.group()
 def dash():
-    """
-    Command line tool to manage the bot.
-    """
+    """Command line tool to manage the bot."""
     pass
 
 
@@ -37,24 +37,21 @@ def dash():
 )
 @click.option("--admins", "-a", prompt="User IDs of Bot admins", type=str, default="")
 def init(prefix, description, token, admins):
-    """
-    Initialize the bot's configuration.
-    """
+    """Initialize the bot's configuration."""
     scripts_dir = Path(__file__).parent
     project_dir = scripts_dir.parent / "src" / "dash"
     discord_dir = project_dir / "discord"
 
     ### Admin parsing
-    admins = stringify_list(re.split(r', |,| ', admins))
+    admins = stringify_list(re.split(r", |,| ", admins))
 
     ### Module prompt
     module_folder = discord_dir / "modules"
     all_modules = [file.stem for file in module_folder.glob("*.py")]
 
     questions = [
-        inquirer.Checkbox('mods',
-            message="Select the modules you want to load",
-            choices=all_modules
+        inquirer.Checkbox(
+            "mods", message="Select the modules you want to load", choices=all_modules
         )
     ]
     answers = inquirer.prompt(questions)
@@ -62,9 +59,10 @@ def init(prefix, description, token, admins):
     modules = stringify_list(modules)
 
     questions = [
-        inquirer.Checkbox('startup_mods',
+        inquirer.Checkbox(
+            "startup_mods",
             message="Select the modules you want to load on startup",
-            choices=answers["mods"]
+            choices=answers["mods"],
         )
     ]
     answers = inquirer.prompt(questions)
@@ -76,12 +74,32 @@ def init(prefix, description, token, admins):
     with example_config.open() as f:
         config = f.read()
     config = config.format(prefix, description, token, admins, modules, startup_modules)
-    
+
     target_file = project_dir / "config.py"
     with target_file.open(mode="w") as f:
         f.write(config)
 
     click.secho("Config initalized successfully.", fg="green")
+
+
+@dash.command()
+@click.option("--message", "-m", prompt="Message to add to the migration", type=str)
+def makemigration(message):
+    command = ["alembic", "revision", "--autogenerate"]
+    if message:
+        command += ["-m", message]
+    subprocess.run(command)
+
+
+@dash.command()
+@click.argument("ref", required=False, type=str)
+def migrate(ref=None):
+    command = ["alembic", "upgrade"]
+    if ref:
+        command.append("ref")
+    else:
+        command.append("head")
+    subprocess.run(command)
 
 
 if __name__ == "__main__":

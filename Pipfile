@@ -1,0 +1,26 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+pylint = "*"
+pytest = "*"
+pytest-cov = "*"
+black = "*"
+
+[packages]
+discord = "*"
+mysqlclient = "*"
+psycopg2-binary = "*"
+click = "*"
+inquirer = "*"
+SQLAlchemy = "*"
+dash = {editable = true,path = "."}
+alembic = "*"
+
+[requires]
+python_version = "3.6"
+
+[pipenv]
+allow_prereleases = true

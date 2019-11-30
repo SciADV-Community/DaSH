@@ -2,12 +2,22 @@
 
 A role bot for visual novels, originally designed for the Steins;Gate playthrough server.
 
-Setup:
+## Setup
 
 -   Clone repo
--   Install the package's dependencies with `pip install -r requirements.txt`
--   Install the package itself with `pip install -e .`
--   Initialize the config with `dash init`
+-   Create and set up the environment with `pipenv install`.
+-   Enter the environment with `pipenv shell`.
+-   Initialize the config with `dash init`.
+
+## Database Management
+
+After making changes to the models, make sure to migrate the database with:
+```
+dash makemigration
+dash migrate
+```
+
+When asked for a message to add to the migration, add a short semantically rich message that describes what the migration is about.
 
 ---
 
