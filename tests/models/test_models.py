@@ -1,3 +1,4 @@
+# pylint: disable=unused-wildcard-import
 import pytest
 from dash.models import *
 
@@ -29,7 +30,7 @@ class TestGame(ModelTest):
 
     def test_update(self):
         game = self.create_game()
-        game.name="sample game 2"
+        game.name = "sample game 2"
         game.save()
 
         game = Game.get(id=game.id)
@@ -49,19 +50,19 @@ class TestGameAlias(ModelTest):
 
 class TestGuild(ModelTest):
     @staticmethod
-    def create_guild(_id="1234567890", name="guild"):
+    def create_guild(_id=1234567890, name="guild"):
         return Guild.create(id=_id, name=name)
 
     def test_create(self):
         guild = self.create_guild()
         assert str(guild) == "guild"
-        assert guild.id == "1234567890"
+        assert guild.id == 1234567890
 
 
 class TestRole(ModelTest):
     @staticmethod
-    def create_role(name="Chaos;Child"):
-        return Role(name=name)
+    def create_role(_id=1234567890, name="Chaos;Child"):
+        return Role(id=_id, name=name)
 
     def test_create(self):
         name = "Chaos;Child"
@@ -76,9 +77,7 @@ class TestRole(ModelTest):
 
 class TestChannel(ModelTest):
     @staticmethod
-    def create_channel(
-        _id="1234567890", user_id="1234567890", name="test-plays-whatever"
-    ):
+    def create_channel(_id=1234567890, user_id=1234567890, name="test-plays-whatever"):
         return Channel(id=_id, user_id=user_id, name=name)
 
     def test_create(self):

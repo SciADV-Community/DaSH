@@ -4,7 +4,7 @@ from dash.models.utils import ModelBase
 
 
 class Guild(ModelBase):
-    id = Column(String, primary_key=True)  # Discord ID
+    id = Column(Integer, primary_key=True)  # Discord ID
     name = Column(String)
     roles = relationship("Role", backref="guild")
     channels = relationship("Channel", backref="guild")
@@ -31,6 +31,7 @@ class GameAlias(ModelBase):
 
 
 class Role(ModelBase):
+    id = Column(Integer, primary_key=True)  # Discord ID
     name = Column(String)
     guild_id = Column(String, ForeignKey("guild.id"))
 
@@ -39,10 +40,10 @@ class Role(ModelBase):
 
 
 class Channel(ModelBase):
-    id = Column(String, primary_key=True)  # Discord ID
+    id = Column(Integer, primary_key=True)  # Discord ID
     name = Column(String)
-    user_id = Column("user_id", String)
-    guild_id = Column(String, ForeignKey("guild.id"))
+    user_id = Column(Integer)
+    guild_id = Column(Integer, ForeignKey("guild.id"))
     game_id = Column(Integer, ForeignKey("game.id"))
 
     def __repr__(self):
