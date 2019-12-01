@@ -32,7 +32,7 @@ def init(prefix, description, token, admins):
 
     ### Module prompt
     module_folder = root_dir / "src" / "dash" / "discord" / "modules"
-    all_modules = [file.stem for file in module_folder.glob("*.py")]
+    all_modules = [file.stem for file in module_folder.glob("*.py") if not file.stem.startswith("__") and file.stem != "help"]
 
     questions = [
         inquirer.Checkbox(
@@ -40,7 +40,7 @@ def init(prefix, description, token, admins):
         )
     ]
     answers = inquirer.prompt(questions)
-    modules = ";".join([f"mod.{module}" for module in answers["mods"]])
+    modules = ";".join([f"{module}" for module in answers["mods"]])
 
     questions = [
         inquirer.Checkbox(
@@ -50,7 +50,9 @@ def init(prefix, description, token, admins):
         )
     ]
     answers = inquirer.prompt(questions)
-    startup_modules = ";".join([f"mod.{module}" for module in answers["startup_mods"]])
+    startup_modules = ";".join(
+        [f"{module}" for module in answers["startup_mods"]]
+    )
 
     ### Save into .env file
     dotenv = root_dir / ".env"

@@ -21,6 +21,8 @@ class TestGame(ModelTest):
         assert game.name == name
         assert str(game) == name
 
+        assert str(GameAlias.filter(game=game)[0]) == name
+
     def test_delete(self):
         game = self.create_game()
         game.delete()
@@ -40,12 +42,11 @@ class TestGame(ModelTest):
 class TestGameAlias(ModelTest):
     def test_create(self):
         game = TestGame.create_game()
-        game.aliases.append(GameAlias(name="some other game"))
-        Session().commit()
+        GameAlias.create(name="some other game", game=game)
 
         game = Game.get(name=game.name)
-        assert len(game.aliases) == 1
-        assert str(game.aliases[0]) == "some other game"
+        assert len(game.aliases) == 2
+        assert str(game.aliases[1]) == "some other game"
 
 
 class TestGuild(ModelTest):
@@ -62,12 +63,13 @@ class TestGuild(ModelTest):
 class TestRole(ModelTest):
     @staticmethod
     def create_role(_id=1234567890, name="Chaos;Child"):
-        return Role(id=_id, name=name)
+        return Role.create(id=_id, name=name)
 
     def test_create(self):
         name = "Chaos;Child"
         guild = TestGuild.create_guild()
-        guild.roles.append(self.create_role())
+        role = self.create_role()
+        guild.roles.append(role)
         Session().commit()
 
         guild = Guild.get(id=guild.id)
@@ -78,7 +80,7 @@ class TestRole(ModelTest):
 class TestChannel(ModelTest):
     @staticmethod
     def create_channel(_id=1234567890, user_id=1234567890, name="test-plays-whatever"):
-        return Channel(id=_id, user_id=user_id, name=name)
+        return Channel.create(id=_id, user_id=user_id, name=name)
 
     def test_create(self):
         guild = TestGuild.create_guild()
@@ -94,3 +96,31 @@ class TestChannel(ModelTest):
 
         game = Game.get(name=game.name)
         assert len(game.channels) == 1
+
+
+class TestCategory(ModelTest):
+    @staticmethod
+    def create_category(
+        _id=1234567890, name="test-category", full=False, archival=False
+    ):
+        return Category.create(id=_id, name=name, full=full, archival=archival)
+
+    def test_create(self):
+        category = self.create_category()
+        guild = TestGuild.create_guild()
+        category.guild = guild
+        game = TestGame.create_game()
+        category.game = game
+        channel = TestChannel.create_channel()
+        category.channels.append(channel)
+        category.save()
+
+        # Test relationships
+        assert len(guild.categories) == 1
+        assert guild.categories[0].name == category.name
+
+        assert len(game.categories) == 1
+        assert game.categories[0].name == category.name
+
+        assert channel.category == category
+

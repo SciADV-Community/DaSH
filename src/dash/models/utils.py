@@ -45,6 +45,14 @@ class ModelBase(object):
         """
         return cls.filter(**kwargs).first()
 
+    @classmethod
+    def get_or_create(cls, **kwargs):
+        obj = cls.get(**kwargs)
+        if obj:
+            return obj
+
+        return cls.create(**kwargs)
+
     def delete(self):
         """
         Helper method to delete a certain object.

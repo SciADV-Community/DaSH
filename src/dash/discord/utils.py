@@ -1,11 +1,13 @@
+import asyncio
+from functools import update_wrapper
 import logging
 from dash import config
 
 
-def get_logger():
-    """Utility function to give access to the Logger"""
+def generate_logger():
+    """Utility function to create the Logger"""
     logger = logging.getLogger("DaSH")
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     handler = logging.FileHandler(filename="dash-log.log", encoding="utf-8", mode="a")
     handler.setFormatter(
@@ -15,6 +17,14 @@ def get_logger():
     logger.addHandler(handler)
 
     return logger
+
+
+_logger = generate_logger()
+
+
+def get_logger():
+    """Utility function to give access to the Logger"""
+    return _logger
 
 
 async def send_message(context, message):
@@ -42,7 +52,9 @@ async def load_module(client, module, context=None):
         return False
 
     try:
+        module = f"dash.discord.modules.{module}"
         client.load_extension(module)
+        logger.info("Module %s was successfully loaded.", module)
         await send_message(context, f"{module} was successfully loaded.")
         return True
     except (AttributeError, ImportError) as e:
@@ -68,7 +80,9 @@ async def unload_module(client, module, context=None):
         return False
 
     try:
+        module = f"dash.discord.modules.{module}"
         client.unload_extension(module)
+        logger.info("Module %s was successfully unloaded.", module)
         await send_message(context, f"{module} was successfully unloaded.")
         return True
     except (AttributeError, ImportError) as e:

@@ -5,6 +5,7 @@ class Engines(Enum):
     """
     Enum to represent supported backend database engines.
     """
+
     SQLite = "sqlite:///"
     MySQL = "mysql://"
     PostgreSQL = "postgresql://"

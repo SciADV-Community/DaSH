@@ -1,12 +1,7 @@
 import os
 from dash.consts import Engines
 
-DATABASE_CONFIG = {
-    "engine": Engines.SQLite, 
-    "options": {
-        "filename": "playthrough.db"
-    }
-}
+DATABASE_CONFIG = {"engine": Engines.SQLite, "options": {"filename": "playthrough.db"}}
 
 PREFIX = os.getenv("BOT_PREFIX", "$")
 DESCRIPTION = os.getenv("BOT_DESCRIPTION", "")
