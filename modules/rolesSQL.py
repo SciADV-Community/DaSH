@@ -77,7 +77,6 @@ def addRole(guild, gameName, role, reqs):
     # reqs is a list, so we dump it to JSON for later retrieval.
     # this is more effective than attempting to grow and shrink rows.
 
-
     c.execute('''INSERT INTO 'roles' VALUES (?, ?, ?)''', (str(gameName), role, json.dumps(reqs)))
 
     rows = c.rowcount
@@ -90,32 +89,29 @@ def addRole(guild, gameName, role, reqs):
 def getRole(guild, gameName: str = None):
     conn, c = openDB(guild.id)
     try:
-        try:
-            if gameName == None:
-                c.execute('''SELECT * FROM roles''')
-            else:
-                c.execute('''SELECT * FROM roles where gameName=(?)''', (gameName,))
+        if gameName == None:
+            c.execute('''SELECT * FROM roles''')
+        else:
+            c.execute('''SELECT * FROM roles where gameName=(?)''', (gameName,))
 
-            roleTup = list(c.fetchall())
+        roleTup = list(c.fetchall())
 
-        except IndexError:
-            print("INDEX ERROR")
-            return []
+    except IndexError:
+        print("INDEX ERROR")
+        return []
 
-        # Convert the Final column (reqs) back from JSON
-        roleList = []
-        for row in roleTup:
-            row = list(row)
-            if row[2] != "[]":
-                row[2] = json.loads(row[2])
-            else:
-                row[2] = ""
-            roleList.append(row)
+    # Convert the Final column (reqs) back from JSON
+    roleList = []
+    for row in roleTup:
+        row = list(row)
+        if row[2] != "[]":
+            row[2] = json.loads(row[2])
+        else:
+            row[2] = ""
+        roleList.append(row)
 
-        print("Returning Role List")
-        return roleList
-    except Exception as e:
-        print(e)
+    return roleList
+
 
 def rmRole(guild, gameName, role):
     conn, c = openDB(guild.id)

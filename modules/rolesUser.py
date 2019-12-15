@@ -74,19 +74,19 @@ class rolesUser(commands.Cog):
     async def chapter(self, ctx, *chapter: str):
         chapter = str(" ".join(chapter))
 
-        # Get game for context channel.
+        # Get game for context channel by matching channel ID against rooms table
         activeGames = getUserGames(ctx.guild, ctx.author.id)
         activeGame = [game[1] for game in activeGames if game[2] == ctx.channel.id]
 
+        # If the list has a result
         if len(activeGame) == 1:
             gameRoles = getRole(ctx.guild, activeGame[0])
 
+            # If the user is querying for chapters, we'll return an embed with a listing
             if chapter == "" or chapter == "list":
                 # Build embed out of roles
-                embed = discord.Embed(title="Role List for {}".format(activeGame[0]),
-                                      description="-"*len("Role List for {}".format(activeGame[0])) ,
-                                      color=0xcb6326)
-                # Loop through each role, make listing for role and reqs
+                embed = discord.Embed(title="Role List for {}".format(activeGame[0]), description="-" * len("Role List for {}".format(activeGame[0])), color=0xcb6326)
+                # Loop through each role, make listing for roles and requirements
                 for role in gameRoles:
                     if len(role[2]) == 0:
                         embed.add_field(name=role[1], value="Requires: None", inline=False)
@@ -95,66 +95,57 @@ class rolesUser(commands.Cog):
 
                 await ctx.send(embed=embed)
                 return
-
+            # If they aren't querying for the chapter, they're attempting to get a role
             else:
-                if len(activeGame) == 1:
-                    # TODO: Clear out string fixes for role[1] once sqlite direct read is gone
+                # Get whether requirement roles are purged on assignment
+                purgeRoles = bool(getGames(ctx.guild, activeGame[0])[6])
 
-                    # TODO: Verify this isn't broken
-                    # Get whether requirement roles are purged on assignment
-                    purgeRoles = bool(getGames(ctx.guild, activeGame[0])[6])
+                try:
+                    # Comparison converts role[1] to string to fix sqlite issue with number chapters
+                    role = [role for role in gameRoles if str(role[1]).lower() == chapter.lower()][0]
+                except IndexError:
+                    await ctx.send("{} is not a valid chapter for this game".format(chapter))
+                    return
 
-                    # Extract game, role and req row out of gameRoles. IndexError means not found.
-                    try:
-                        # comparison converts role[1] to string to fix sqlite issue with number chapters
-                        role = [role for role in gameRoles if str(role[1]).lower() == chapter.lower()][0]
-                    except IndexError:
-                        await ctx.send("{} is not a valid chapter for this game".format(chapter))
-                        return
+                # Retrieve the chapter role object so we can work with it
+                roleObj = get(ctx.guild.roles, name=str(role[1]))
 
-                    # Get chapter object
-                    roleObj = get(ctx.guild.roles, name=chapter)
+                if roleObj is not None:
+                    # Verify user has all the role requirements if the list isn't empty
+                    if len(role[2]) > 0:
+                        # Get all user roles, compare them against the requirements
+                        userRoles = [role.name for role in ctx.author.roles]
+                        result = all(role in userRoles for role in role[2])
 
-                    if roleObj is not None:
-                        # If the chapter has requirements
-                        if len(role[2]) > 0:
-                            # Get role reqs the user has
-                            userRoles = [role.name for role in ctx.author.roles]
-                            result = all(role in userRoles for role in role[2])
-
-                            # If user has all the role reqs
-                            if result == True:
-                                await ctx.author.add_roles(roleObj)
-                                await ctx.send("Role assigned!")
-
-                                # if purge is set to on for this game
+                        if result == True:
+                            await ctx.author.add_roles(roleObj)
+                            await ctx.send("Role assigned!")
+                            # If role purging is enabled (Removes req roles)
+                            if purgeRoles == True:
                                 for roleObj in role[2]:
                                     roleObj = get(ctx.guild.roles, name=roleObj)
                                     await ctx.author.remove_roles(get(ctx.guild.roles, name=roleObj))
                                 return
-
-                            elif result == False:
-                                # Retrieve all missing roles and inform user
-                                missingRoles = [role for role in role[2] if role not in userRoles]
-                                embed = discord.Embed(title="Missing Role Requirement", color=0xcb6326)
-                                embed.add_field(name=chapter , value="\n".join(missingRoles), inline=False)
-                                await ctx.send(embed=embed)
-                                return
-
                         else:
-                            await ctx.author.add_roles(roleObj)
-                            await ctx.send("Role assigned!")
-
-                            # if purge is set to on for this game
-                            for roleObj in role[2]:
-                                roleObj = get(ctx.guild.roles, name=roleObj)
-                                await ctx.author.remove_roles(roleObj)
+                            # Retrieve all missing roles and inform user
+                            missingRoles = [role for role in role[2] if role not in userRoles]
+                            embed = discord.Embed(title="Missing Role Requirement", color=0xcb6326)
+                            embed.add_field(name=chapter, value="\n".join(missingRoles), inline=False)
+                            await ctx.send(embed=embed)
                             return
                     else:
-                        # Catch for instances where a game role has been removed
-                        await ctx.send('Error: role "{}" not found on server!'.format(chapter))
-                        return
-
+                        await ctx.author.add_roles(roleObj)
+                        await ctx.send("Role assigned!")
+                        # If role purging is enabled (Removes req roles)
+                        if purgeRoles == True:
+                            for roleObj in role[2]:
+                                roleObj = get(ctx.guild.roles, name=roleObj)
+                                await ctx.author.remove_roles(get(ctx.guild.roles, name=roleObj))
+                            return
+                else:
+                    # Catch for instances where a game role has been removed
+                    await ctx.send('Chapter role "{}" not found on server! Contact an Admin!'.format(chapter))
+                    return
         else:
             await ctx.send("This command must be sent from one of your playthrough channels.")
             return
