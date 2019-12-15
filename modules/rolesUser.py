@@ -102,13 +102,13 @@ class rolesUser(commands.Cog):
 
                 try:
                     # Comparison converts role[1] to string to fix sqlite issue with number chapters
-                    role = [role for role in gameRoles if str(role[1]).lower() == chapter.lower()][0]
+                    role = [role for role in gameRoles if role[1].lower() == chapter.lower()][0]
                 except IndexError:
                     await ctx.send("{} is not a valid chapter for this game".format(chapter))
                     return
 
                 # Retrieve the chapter role object so we can work with it
-                roleObj = get(ctx.guild.roles, name=str(role[1]))
+                roleObj = get(ctx.guild.roles, name=role[1])
 
                 if roleObj is not None:
                     # Verify user has all the role requirements if the list isn't empty

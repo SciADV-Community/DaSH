@@ -1,6 +1,7 @@
 import sqlite3, os, json, logging
 from datetime import datetime
 from discord.utils import get
+import traceback
 
 path = "./guilds/"
 dbPath = path + "{}" + ".sqlite"
@@ -84,7 +85,6 @@ def addRole(guild, gameName, role, reqs):
 
     c.close()
     return rows
-
 
 def getRole(guild, gameName: str = None):
     conn, c = openDB(guild.id)
@@ -243,14 +243,14 @@ def verifyGuild(guild):
 
 def initGuild(guild):
     # Table for authorized users and their roles
-    authTable = ["userID integer", "role string"]
+    authTable = ["userID INT", "role TEXT"]
     # Table for storing games and their settings
-    gameTable = ["gameName string", "gameAlias string", "complRole string", "chnlSuffix string", "playCat string", "complCat string",
-                "purgeRole integer"]
+    gameTable = ["gameName TEXT", "gameAlias TEXT", "complRole TEXT", "chnlSuffix TEXT", "playCat TEXT", "complCat TEXT",
+                "purgeRole INT"]
     # Table for storing user game states
-    roomTable = ["userID integer", "gameName string", "gameRoom integer"]
+    roomTable = ["userID INT", "gameName TEXT", "gameRoom INT"]
     # Table for role, both for games and for series
-    roleTable = ["gameName string", "role string", "reqs string"]
+    roleTable = ["gameName TEXT", "role TEXT", "reqs TEXT"]
 
     if not os.path.exists(path): os.makedirs(path)
 
