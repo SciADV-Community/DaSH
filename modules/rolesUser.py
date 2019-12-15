@@ -147,7 +147,7 @@ class rolesUser(commands.Cog):
                     await ctx.send('Chapter role "{}" not found on server! Contact an Admin!'.format(chapter))
                     return
         else:
-            await ctx.send("This command must be sent from one of your playthrough channels.")
+            await ctx.send("This command must be sent from one of your playthrough channels.", delete_after=30)
             return
 
     @commands.command(pass_context=True)
@@ -172,6 +172,7 @@ class rolesUser(commands.Cog):
             complRoleObj = get(ctx.guild.roles, name=activeGame[0][2])
 
             # Verify variables prior to utilizing
+            # TODO: Add complRoleObj verification
             await ctx.author.add_roles(complRoleObj)
             await ctx.channel.edit(category=complCatObj, sync_permissions=True)
             rmUserGame(ctx.guild, ctx.channel.id)
@@ -198,7 +199,7 @@ class rolesUser(commands.Cog):
                         await ctx.author.add_roles(roleObj)
 
         else:
-            await ctx.send("This command must be sent from a playthrough room")
+            await ctx.send("This command must be sent from one of your playthrough channels.", delete_after=30)
             return
 
     @commands.command(pass_context=True)
