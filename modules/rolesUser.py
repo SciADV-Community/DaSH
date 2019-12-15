@@ -168,7 +168,6 @@ class rolesUser(commands.Cog):
             activeGame = [row for row in gameList if activeGame[0] == row[0]]
 
             # Get Finished Category Object for activeGame
-            print(activeGame)
             complCatObj = get(ctx.guild.categories, name=activeGame[0][5])
             complRoleObj = get(ctx.guild.roles, name=activeGame[0][2])
 
