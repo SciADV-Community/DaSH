@@ -219,7 +219,7 @@ class rolesUser(commands.Cog):
         # Get info for game, get object for role
         # Validate database info in case either column is a number
         try:
-            game = next(row for row in gameList if game == str(row[0]) or game == str(row[1]))
+            game = next(row for row in gameList if game.lower() == str(row[0]).lower() or game.lower() == str(row[1]).lower())
             complRoleObj = get(ctx.guild.roles, name=game[2])
             if complRoleObj == None: raise Exception
         except Exception:
