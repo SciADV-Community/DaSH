@@ -1,7 +1,7 @@
 from discord.ext import commands
-from discord.utils import get
 from modules.rolesSQL import *
-import os, shutil, sqlite3, discord
+import discord
+import traceback
 
 modName = ""
 
@@ -11,17 +11,16 @@ instructions = "This room has been created for your playthrough of {}.\n" \
                 "Please note that commands will only function in your playthrough room, " \
                 "and that you can only have one playthrough room at any given time."
 
-
 class rolesUser(commands.Cog):
     def __init__(self, client):
         self.client = client
         self.instructions = instructions
+
         global modName
         modName = self.__class__.__name__
 
         print("{}: loaded successfully".format(modName))
 
-    # REWRITE COMPLETE
     @commands.command(pass_context=True)
     async def start(self, ctx, *game):
         game = (" ".join(game))
@@ -62,6 +61,7 @@ class rolesUser(commands.Cog):
                     # Assign room, confirm with user
                     setUserGame(ctx.guild, ctx.author.id, gameInst[0], room.id)
                     await ctx.send("Game room has been created: " + room.mention, delete_after=30)
+
                     return
                 else:
                     await ctx.send("You already have a {} room!".format(game))
@@ -177,6 +177,7 @@ class rolesUser(commands.Cog):
             activeGame = [row for row in gameList if activeGame[0] == row[0]]
 
             # Get Finished Category Object for activeGame
+            print(activeGame)
             complCatObj = get(ctx.guild.categories, name=activeGame[0][5])
             complRoleObj = get(ctx.guild.roles, name=activeGame[0][2])
 
@@ -209,7 +210,6 @@ class rolesUser(commands.Cog):
         else:
             await ctx.send("This command must be sent from a playthrough room")
             return
-
 
     @commands.command(pass_context=True)
     async def finished(self, ctx, *game):

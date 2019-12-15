@@ -37,14 +37,13 @@ class rolesAdmin(commands.Cog):
 
 ## TODO: Add "verify" for DB check as well as commands to modify games on the back end
 
-    #REWRITE COMPLETE
     @commands.command(pass_context=True)
     async def addgame(self, ctx, gameName, gameAlias, complRole, chnlSuffix, playCat, complCat, purgeRole):
         if not await isAuthorized(ctx, "addgame", 0): return
 
         result = addGame(ctx.guild, gameName, gameAlias.lower(), complRole, chnlSuffix.lower(), playCat, complCat, purgeRole)
 
-        if result is 0:
+        if result == 0:
             if get(ctx.guild.roles, name=complRole) is None: await ctx.guild.create_role(name=complRole)
             if get(ctx.guild.categories, name=playCat) is None: await ctx.guild.create_category(name=playCat)
             if get(ctx.guild.categories, name=complCat) is None: await ctx.guild.create_category(name=complCat)
@@ -55,7 +54,6 @@ class rolesAdmin(commands.Cog):
         else:
             await ctx.send("{} already exists!".format(gameName))
 
-    # REWRITE COMPLETE
     @commands.command(pass_context=True)
     async def listgames(self,ctx):
         if not await isAuthorized(ctx, "getgames", 0): return
@@ -65,7 +63,7 @@ class rolesAdmin(commands.Cog):
         games = [game[0] for game in games]
 
         # If there are games...
-        if len(games) is not 0:
+        if len(games) != 0:
             embed = Embed(color=0xe98530)
             embed.add_field(name="Configured games on {}".format(ctx.guild.name), value="\n".join(games), inline=False)
             # TODO: Sort Database descending
@@ -73,7 +71,6 @@ class rolesAdmin(commands.Cog):
         else:
             await ctx.send("No games currently configured for this server!")
 
-    # REWRITE COMPLETE
     @commands.command(pass_context=True)
     async def rmgame(self, ctx, *gameName):
         if not await isAuthorized(ctx, "rmgame", 0): return
@@ -83,19 +80,20 @@ class rolesAdmin(commands.Cog):
         rmRole(ctx.guild, gameName, "*")
         rows = rmGame(ctx.guild, gameName)
 
-        if rows is not 0:
+        if rows != 0:
             await ctx.send("{} removed successfully!".format(gameName))
         else:
             await ctx.send("Game does not exist, try again!")
 
 ## Role Commands ##
-    # REWRITE COMPLETE
-    # TODO: Address bug where roleName without quotes will create multiple roles. May need to turn creation off.
     @commands.command(pass_content=True)
     async def addrole(self, ctx, gameName, roleName, *reqs):
         if not await isAuthorized(ctx, "addrole", 0): return
 
-        reqs = list(reqs)
+        if reqs != None:
+            reqs = list(reqs)
+        else:
+            reqs = list()
 
         if gameName == "*":
             gameObj = gameName
@@ -121,7 +119,6 @@ class rolesAdmin(commands.Cog):
             await ctx.send('"{}" is not a valid game. Please check gamelist and try again.'.format(gameName))
             return
 
-    # REWRITE COMPLETE
     @commands.command(pass_context=True)
     async def listroles(self, ctx, *gameName):
         if not await isAuthorized(ctx, "getroles", 0): return
@@ -144,7 +141,6 @@ class rolesAdmin(commands.Cog):
         else:
             await ctx.send('No roles found for game "{}"!'.format(gameName))
 
-    # REWRITE COMPLETE
     @commands.command(pass_context=True)
     async def rmrole(self, ctx, gameName, role):
         if not await isAuthorized(ctx, "rmrole", 0): return
@@ -159,6 +155,8 @@ class rolesAdmin(commands.Cog):
 
     @commands.command(pass_context=True)
     async def repair(self, ctx, gameName, user):
+        if not await isAuthorized(ctx, "repair", 0): return
+
         try:
             userID = int(''.join(num for num in user if num.isdigit()))
             user = get(ctx.guild.members, id=userID)
@@ -197,7 +195,6 @@ class rolesAdmin(commands.Cog):
 ## Permission Commands ##
 ## Permissions are stored as [UserID][PermissionValue]
 
-    # REWRITE COMPLETE
     @commands.command(pass_context=True)
     async def auth(self, ctx, *role):
         if not await isAuthorized(ctx, "auth", 1): return
@@ -216,7 +213,6 @@ class rolesAdmin(commands.Cog):
             setAuthorized(ctx.guild, authRole, 0)
             await ctx.send("**{}** set as authorized group.".format(authRole.name))
 
-    # REWRITE COMPLETE
     @commands.command(pass_context=True)
     async def getauth(self, ctx):
         if not await isAuthorized(ctx, "getauth", 1): return
@@ -273,7 +269,6 @@ class rolesAdmin(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    # REWRITE COMPLETE
     @commands.command(pass_context=True)
     async def deauth(self, ctx):
         if not await isAuthorized(ctx, "deauth", 1): return

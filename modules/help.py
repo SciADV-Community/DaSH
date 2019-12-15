@@ -18,7 +18,7 @@ cmdList = {
     "deauth": ['', 'Removes ALL roles authorized for commands.', 2]
 }
 
-class help():
+class help(commands.Cog):
     def __init__(self, client):
         self.client = client
         global modName
